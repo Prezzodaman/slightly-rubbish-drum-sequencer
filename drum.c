@@ -5,6 +5,8 @@
 
 #define MIDI_BUFFER_SIZE 32
 
+#define MIDI_PPQ 24
+
 #define MIDI_EVENT_NOTE 0x9
 #define MIDI_EVENT_PITCH 0xe
 #define MIDI_EVENT_CONTROL 0xb
@@ -87,7 +89,7 @@ int main(){
 	int bpm;
 	int pattern_end;
 	int drum_sounds;
-	int prog_amount;	
+	int prog_amount;
 
 	if(!degib){
 		printf("MIDI output devices:\n");
@@ -141,7 +143,7 @@ int main(){
 	if(degib){
 		pattern_end=16;
 		drum_sounds=10;
-		bpm=120;
+		bpm=110;
 		prog_amount=3;
 	}else{
 		printf("\nEnter BPM: ");
@@ -161,7 +163,6 @@ int main(){
 			}
 		}
 	}
-	//
 
 	char drum_pattern[DRUM_SOUNDS_MAX][DRUM_PATTERN_LENGTH];
 	int drum=0;
@@ -180,44 +181,18 @@ int main(){
 	for(step=0;step<pattern_end;step++){
 		if(step%4==0){
 			drum_pattern[0][step]=1;
-		}
-		/*if(step%2==0){
-			drum_pattern[7][step]=1;
-		}
-		if((step+4)%8==0){
-			drum_pattern[1][step]=1;
-		}*/
 	}
-
-	// amen!
-	/*drum_pattern[0][0]=1;
-	drum_pattern[1][2]=1;
-	drum_pattern[2][4]=1;
-	drum_pattern[3][6]=1;
-	drum_pattern[4][7]=1;
-	drum_pattern[5][8]=1;
-	drum_pattern[6][9]=1;
-	drum_pattern[7][10]=1;
-	drum_pattern[8][11]=1;
-	drum_pattern[9][12]=1;
-	drum_pattern[10][14]=1;
-	drum_pattern[11][15]=1;*/
 
 	step=0;
 
-	//
-
 	PmEvent midi_in_buffer[1];
 	PmEvent midi_out_buffer[1];
-	PmEvent midi_clock_buffer[24];
+	PmEvent midi_clock_buffer[1];
 	Event midi_in_event;
 
-	midi_out_buffer[0].message=0xfa;
-	Pm_Write(midi_out_stream,midi_out_buffer,1);
+	bool started=false;
 
-	for(int a=0;a<24;a++){
-		midi_clock_buffer[a].message=0xf8;
-	}
+	midi_clock_buffer[0].message=0xf8;
 
 	while(1){
 		printf("\e[H\e[2J\e[3J");
@@ -281,10 +256,19 @@ int main(){
 		printf("^\n");
 		printf("BPM: %d, Program: %d, Length: %d beats\n",bpm,program+1,pattern_end);
 
-		Pt_Sleep(bpm_ms);
-
-		if(step%2==0){
-			Pm_Write(midi_out_stream,midi_clock_buffer,24);
+		for(int a=0;a<6;a++){
+			Pt_Sleep(bpm_ms/6);
+			if(started){
+				Pm_Write(midi_out_stream,midi_clock_buffer,1);
+			}else{
+				if(a==4){
+					midi_out_buffer[0].message=0xfc;
+					Pm_Write(midi_out_stream,midi_out_buffer,1);
+					midi_out_buffer[0].message=0xfa;
+					Pm_Write(midi_out_stream,midi_out_buffer,1);
+					started=true;
+				}
+			}
 		}
 
 		for(drum=0;drum<drum_sounds;drum++){
